@@ -19,9 +19,12 @@
 
 repo.name: my-lvgl
 repo.versions:
+    "0.0.0": "master"
     "8.0.2": "v8.0.2"
 
 repo.newt_compatibility:
+    0.0.0:
+        0.0.0: good
     8.0.2:
         1.9.0: good
 
