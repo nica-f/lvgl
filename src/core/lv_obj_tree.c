@@ -65,6 +65,7 @@ void lv_obj_del(lv_obj_t * obj)
 
     /*Call the ancestor's event handler to the parent to notify it about the child delete*/
     if(par) {
+        lv_obj_update_layout(par);
         lv_obj_readjust_scroll(par, LV_ANIM_OFF);
         lv_obj_scrollbar_invalidate(par);
         lv_event_send(par, LV_EVENT_CHILD_CHANGED, NULL);
@@ -148,14 +149,6 @@ void lv_obj_set_parent(lv_obj_t * obj, lv_obj_t * parent)
     lv_obj_allocate_spec_attr(parent);
 
     lv_obj_t * old_parent = obj->parent;
-    lv_point_t old_pos;
-    old_pos.y = lv_obj_get_y(obj);
-
-    lv_base_dir_t new_base_dir = lv_obj_get_style_base_dir(parent, LV_PART_MAIN);
-
-    if(new_base_dir != LV_BASE_DIR_RTL) old_pos.x = lv_obj_get_x(obj);
-    else  old_pos.x = old_parent->coords.x2 - obj->coords.x2;
-
     /*Remove the object from the old parent's child list*/
     int32_t i;
     for(i = lv_obj_get_index(obj); i <= (int32_t)lv_obj_get_child_cnt(old_parent) - 2; i++) {
@@ -179,16 +172,9 @@ void lv_obj_set_parent(lv_obj_t * obj, lv_obj_t * parent)
 
     obj->parent = parent;
 
-    if(new_base_dir != LV_BASE_DIR_RTL) {
-        lv_obj_set_pos(obj, old_pos.x, old_pos.y);
-    }
-    else {
-        /*Align to the right in case of RTL base dir*/
-        lv_coord_t new_x = lv_obj_get_width(parent) - old_pos.x - lv_obj_get_width(obj);
-        lv_obj_set_pos(obj, new_x, old_pos.y);
-    }
-
     /*Notify the original parent because one of its children is lost*/
+    lv_obj_readjust_scroll(old_parent, LV_ANIM_OFF);
+    lv_obj_scrollbar_invalidate(old_parent);
     lv_event_send(old_parent, LV_EVENT_CHILD_CHANGED, obj);
     lv_event_send(old_parent, LV_EVENT_CHILD_DELETED, NULL);
 
@@ -196,12 +182,18 @@ void lv_obj_set_parent(lv_obj_t * obj, lv_obj_t * parent)
     lv_event_send(parent, LV_EVENT_CHILD_CHANGED, obj);
     lv_event_send(parent, LV_EVENT_CHILD_CREATED, NULL);
 
+    lv_obj_mark_layout_as_dirty(obj);
+
     lv_obj_invalidate(obj);
 }
 
 void lv_obj_move_to_index(lv_obj_t * obj, int32_t index)
 {
     LV_ASSERT_OBJ(obj, MY_CLASS);
+
+    if(index < 0) {
+        index = lv_obj_get_child_cnt(lv_obj_get_parent(obj)) + index;
+    }
 
     const int32_t old_index = lv_obj_get_index(obj);
 
